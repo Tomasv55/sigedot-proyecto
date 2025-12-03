@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
+// Importaciones de Chart.js para Reportes
+import { Bar } from 'react-chartjs-2'; 
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+
 import { loginService, getCertificatesService, createCertificateService, getUsersService, deleteUserService, registerService, updateUserService } from './services/api';
 import api from './services/api'; 
 import { 
   User, Lock, FileText, CheckCircle, AlertCircle, Shield, 
   LayoutDashboard, Users, LogOut, Bell, Plus, MoreVertical,
-  Calendar, Menu, X, Search, Trash2, Filter, Download, XCircle, Mail, Briefcase, Edit2
+  Calendar, Menu, X, Search, Trash2, Filter, Download, XCircle, Mail, Briefcase, Edit2,
+  BarChart, HelpCircle // Iconos de las nuevas vistas
 } from 'lucide-react';
+
+// Configuración de Chart.js (Asegúrate de haber corrido: npm install chart.js react-chartjs-2)
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 // --- UTILIDADES ---
 const formatDate = (dateString) => {
@@ -19,8 +27,7 @@ const formatDate = (dateString) => {
 const Toast = ({ message, type, onClose }) => (
   <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white text-sm font-medium animate-in slide-in-from-bottom-5 fade-in duration-300 flex items-center gap-2 z-50 ${
     type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
-  }`}>
-    {type === 'success' ? <CheckCircle size={18}/> : <AlertCircle size={18}/>}
+  }`}>{type === 'success' ? <CheckCircle size={18}/> : <AlertCircle size={18}/>}
     {message}
   </div>
 );
@@ -109,42 +116,67 @@ const LoginPage = ({ onLogin }) => {
   );
 };
 
-// --- MODAL DE CARGA DOCUMENTOS ---
+// --- MODAL DE CARGA DOCUMENTOS (VERSIÓN DRAG & DROP) ---
 const UploadModal = ({ onClose, onUpload }) => {
   const [formData, setFormData] = useState({ filename: '', type: 'Tributario' });
   const [loading, setLoading] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false); // Nuevo estado visual
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.filename) return; 
     setLoading(true);
-    await onUpload(formData);
+    // Llama a la función del App.jsx para la simulación
+    await onUpload(formData); 
     setLoading(false);
   };
 
+  // Funciones para la estética Drag & Drop
+  const handleDragOver = (e) => { e.preventDefault(); setIsDragActive(true); };
+  const handleDragLeave = () => setIsDragActive(false);
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <Card className="w-full max-w-md shadow-2xl border-0">
+      <Card className="w-full max-w-lg shadow-2xl border-0">
         <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
-          <h3 className="font-bold text-lg text-slate-800">Subir Documento</h3>
+          <h3 className="font-bold text-lg text-slate-800">Carga Masiva de Certificados</h3>
           <button onClick={onClose}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
         </div>
+        
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre del Archivo</label>
-            <input required type="text" className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej: Balance_Marzo.pdf" value={formData.filename} onChange={e=>setFormData({...formData, filename: e.target.value})} />
+          {/* DRAG & DROP BOX */}
+          <div 
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            className={`p-10 rounded-xl transition-all duration-300 cursor-pointer ${
+              isDragActive ? 'bg-indigo-50 border-indigo-400' : 'bg-slate-50 border-slate-200'
+            } border-2 border-dashed flex flex-col items-center justify-center`}
+          >
+            <Download size={36} className={`mb-3 ${isDragActive ? 'text-indigo-600' : 'text-slate-400'}`}/>
+            <p className="font-semibold text-slate-700">Arrastra tus certificados aquí</p>
+            <p className="text-sm text-slate-500 mt-1">o utiliza el formulario manual</p>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Categoría</label>
-            <select className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white" value={formData.type} onChange={e=>setFormData({...formData, type: e.target.value})}>
-              <option>Tributario</option>
-              <option>Contable</option>
-              <option>Legal</option>
-              <option>RRHH</option>
-            </select>
+
+          {/* FORMULARIO MANUAL (Para completar la simulación del envío) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre del Archivo</label>
+              <input required type="text" className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej: Balance_Marzo.pdf" value={formData.filename} onChange={e=>setFormData({...formData, filename: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Categoría</label>
+              <select className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white" value={formData.type} onChange={e=>setFormData({...formData, type: e.target.value})}>
+                <option>Tributario</option>
+                <option>Contable</option>
+                <option>Legal</option>
+                <option>RRHH</option>
+              </select>
+            </div>
           </div>
+
           <div className="pt-2 flex gap-3">
             <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" className="flex-1" disabled={loading}>{loading ? 'Guardando...' : 'Confirmar'}</Button>
+            <Button type="submit" className="flex-1" disabled={loading}>{loading ? 'Guardando...' : 'Confirmar Carga'}</Button>
           </div>
         </form>
       </Card>
@@ -327,7 +359,7 @@ const DocumentsView = ({ user, certificates, onUpdateStatus, onDelete }) => {
   );
 };
 
-const UsersView = ({ users, onDelete, onEdit }) => (
+const UsersView = ({ users, onDelete, onEdit, onCreate }) => (
   <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div className="flex justify-between items-center mb-6">
       <h3 className="font-bold text-xl text-slate-800">Administración de Usuarios</h3>
@@ -359,6 +391,91 @@ const UsersView = ({ users, onDelete, onEdit }) => (
   </Card>
 );
 
+// --- VISTA DE REPORTES ---
+const ReportsView = ({ certificates }) => {
+    // Datos de ejemplo para el gráfico
+    const reportData = useMemo(() => {
+        const statusCounts = certificates.reduce((acc, c) => {
+            acc[c.status] = (acc[c.status] || 0) + 1;
+            return acc;
+        }, {});
+
+        return {
+            labels: ['Aprobados', 'Pendientes', 'Rechazados'],
+            datasets: [
+                {
+                    label: '# de Documentos',
+                    data: [statusCounts.validated || 0, statusCounts.pending || 0, statusCounts.rejected || 0],
+                    backgroundColor: [
+                        'rgba(16, 185, 129, 0.6)', // emerald
+                        'rgba(251, 191, 36, 0.6)', // amber
+                        'rgba(244, 63, 94, 0.6)', // rose
+                    ],
+                    borderColor: [
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(251, 191, 36, 1)',
+                        'rgba(244, 63, 94, 1)',
+                    ],
+                    borderWidth: 1,
+                },
+            ],
+        };
+    }, [certificates]);
+
+    const options = {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            title: {
+                display: true,
+                text: 'Distribución de Certificados por Estado',
+            },
+        },
+    };
+
+    return (
+        <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[500px]">
+            <h3 className="font-bold text-xl text-slate-800 mb-6">Reportes y Análisis</h3>
+            <div className="w-full max-w-2xl mx-auto">
+                <Bar data={reportData} options={options} />
+            </div>
+            <p className="text-sm text-slate-600 mt-6 pt-6 border-t border-slate-100">
+                Esta sección utiliza Chart.js para proveer métricas visuales en tiempo real, demostrando la capacidad del sistema para el análisis de datos de auditoría.
+            </p>
+        </Card>
+    );
+};
+// --- FIN VISTA DE REPORTES ---
+
+
+// --- VISTA DE SOPORTE ---
+const SupportView = () => (
+    <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[400px]">
+        <h3 className="font-bold text-xl text-slate-800 mb-6">Soporte y Preguntas Frecuentes (FAQ)</h3>
+        <div className="space-y-6">
+            <p className="font-bold text-slate-800 text-lg">Preguntas Frecuentes</p>
+            <div className="space-y-4">
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <p className="font-medium text-slate-700 flex items-center gap-2"><HelpCircle size={18}/> ¿El sistema no me deja iniciar sesión?</p>
+                    <p className="text-sm text-slate-600 mt-1.5 ml-6">Verifique sus credenciales. Si tiene MFA habilitado, revise su código de autenticación. Si el problema persiste, contacte a soporte.</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <p className="font-medium text-slate-700 flex items-center gap-2"><HelpCircle size={18}/> ¿Qué tipos de documentos puedo subir?</p>
+                    <p className="text-sm text-slate-600 mt-1.5 ml-6">Actualmente, el sistema acepta archivos en formato PDF, PNG y JPG. Otros formatos serán rechazados en el backend por seguridad.</p>
+                </div>
+            </div>
+            
+            <p className="font-bold text-slate-800 text-lg pt-4 border-t border-slate-100">Contacto Directo</p>
+            <p className="text-sm text-slate-600">Para requerimientos técnicos o soporte de errores, por favor contacte al equipo de desarrollo en:</p>
+            <p className="text-lg font-mono text-indigo-600 flex items-center gap-2"><Mail size={20}/> soporte@sigedot.com</p>
+        </div>
+    </Card>
+);
+// --- FIN VISTA DE SOPORTE ---
+
+
 // --- APP PRINCIPAL ---
 const App = () => {
   const [user, setUser] = useState(null);
@@ -386,7 +503,7 @@ const App = () => {
 
   useEffect(() => {
     if (!user) return;
-    if (view === 'dashboard' || view === 'documents') loadCertificates();
+    if (view === 'dashboard' || view === 'documents' || view === 'reports') loadCertificates(); 
     if (view === 'users' && user.role === 'admin') loadUsers();
   }, [user, view]);
 
@@ -408,7 +525,8 @@ const App = () => {
 
   const handleUpload = async (data) => {
     try {
-      await createCertificateService(data);
+      // Nota: En una app real, data contendría el archivo subido, no solo el nombre.
+      await createCertificateService(data); 
       setIsModalOpen(false);
       loadCertificates();
       showToast('Documento cargado');
@@ -484,6 +602,9 @@ const App = () => {
           <button onClick={() => setView('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${view === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><LayoutDashboard size={20}/> Dashboard</button>
           <button onClick={() => setView('documents')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${view === 'documents' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><FileText size={20}/> Documentos</button>
           {user.role === 'admin' && <button onClick={() => setView('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${view === 'users' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Users size={20}/> Usuarios</button>}
+          {/* Vistas Nuevas */}
+          <button onClick={() => setView('reports')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${view === 'reports' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><BarChart size={20}/> Reportes</button>
+          <button onClick={() => setView('support')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all ${view === 'support' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><AlertCircle size={20}/> Soporte</button>
         </nav>
         <div className="p-4 border-t border-slate-800 bg-slate-900/50">
           <div className="flex items-center gap-3">
@@ -509,7 +630,9 @@ const App = () => {
 
         {view === 'dashboard' && <DashboardView user={user} certificates={certificates} />}
         {view === 'documents' && <DocumentsView user={user} certificates={certificates} onUpdateStatus={handleUpdateStatus} onDelete={handleDeleteCert} />}
-        {view === 'users' && <UsersView users={users} onDelete={handleDeleteUser} onEdit={handleEditUserClick} />}
+        {view === 'users' && <UsersView users={users} onDelete={handleDeleteUser} onEdit={handleEditUserClick} onCreate={handleCreateUserClick} />}
+        {view === 'reports' && <ReportsView certificates={certificates} />}
+        {view === 'support' && <SupportView />}
       </main>
 
       {isModalOpen && <UploadModal onClose={() => setIsModalOpen(false)} onUpload={handleUpload} />}
